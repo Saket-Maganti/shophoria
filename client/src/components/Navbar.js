@@ -1,15 +1,15 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CartContext } from '../context/CartContext'; // Import CartContext
-import './Navbar.css';
+import { AuthContext } from '../context/AuthContext';
 
 function Navbar() {
-  const { cartItemCount } = useContext(CartContext); // Access cartItemCount from context
-  const token = localStorage.getItem('token');
+  const { token, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  console.log('Navbar token:', token); // Debug
+
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    logout();
     navigate('/login');
   };
 
@@ -34,29 +34,25 @@ function Navbar() {
               <Link className="nav-link" to="/">Home</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/cart">
-                Cart {cartItemCount > 0 && <span className="badge bg-primary">{cartItemCount}</span>}
-              </Link>
+              <Link className="nav-link" to="/cart">Cart</Link>
             </li>
             <li className="nav-item">
               <Link className="nav-link" to="/wishlist">Wishlist</Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" to="/dashboard">Dashboard</Link>
+            </li>
             {token ? (
-              <>
-                <li className="nav-item">
-                  <Link className="nav-link" to="/dashboard">Dashboard</Link>
-                </li>
-                <li className="nav-item">
-                  <button className="nav-link btn btn-link" onClick={handleLogout}>Logout</button>
-                </li>
-              </>
+              <li className="nav-item">
+                <button className="nav-link btn btn-link" onClick={handleLogout}>Logout</button>
+              </li>
             ) : (
               <>
                 <li className="nav-item">
                   <Link className="nav-link" to="/login">Login</Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/register">Register</Link>
+                  <Link className="nav-link" to="/signup">Signup</Link>
                 </li>
               </>
             )}

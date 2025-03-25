@@ -1,125 +1,18 @@
-import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
-import { API_BASE_URL } from '../config';
-import { CartContext } from '../context/CartContext';
-import './Cart.css';
-
-function Cart() {
-  const { cart, cartItemCount, refreshCart } = useContext(CartContext);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCart = async () => {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Please log in to view your cart!');
-        window.location.href = '/login';
-        return;
-      }
-
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/cart`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        console.log('Fetched cart:', JSON.stringify(response.data, null, 2)); // Debug
-        refreshCart(); // Update the cart context
-      } catch (err) {
-        console.error('Error fetching cart:', err.response ? err.response.data : err.message);
-        if (err.response && err.response.data.msg === 'Token expired, please log in again') {
-          alert('Your session has expired. Please log in again.');
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-        } else {
-          alert('Failed to fetch cart. Please try again.');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCart();
-  }, []);
-
-  const handleCheckout = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Please log in to checkout!');
-      window.location.href = '/login';
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/orders`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      console.log('Created order:', JSON.stringify(response.data, null, 2)); // Debug
-      alert('Order placed successfully!');
-      refreshCart(); // Update the cart context to reflect the cleared cart
-      window.location.href = '/dashboard'; // Redirect to dashboard to view the order
-    } catch (err) {
-      console.error('Error during checkout:', err.response ? err.response.data : err.message);
-      if (err.response && err.response.data.msg === 'Token expired, please log in again') {
-        alert('Your session has expired. Please log in again.');
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      } else if (err.response && err.response.data.msg === 'Cart is empty') {
-        alert('Your cart is empty. Add items to your cart before checking out.');
-      } else {
-        alert('Failed to place order. Please try again.');
-      }
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!cart || !cart.items || cart.items.length === 0) {
-    return <div className="container my-5"><h2>Your cart is empty.</h2></div>;
-  }
-
-  const total = cart.items.reduce((sum, item) => {
-    return sum + (item.quantity * item.productId.price);
-  }, 0);
-
-  return (
-    <div className="container my-5">
-      <h2>Your Cart</h2>
-      <div className="row">
-        {cart.items.map(item => (
-          <div key={item.productId._id} className="col-md-4 mb-4">
-            <div className="card h-100 shadow-sm">
-              <img
-                src={item.productId.images?.[0] || 'https://placehold.it/150x150'}
-                className="card-img-top"
-                alt={item.productId.name}
-              />
-              <div className="card-body">
-                <h5 className="card-title">{item.productId.name}</h5>
-                <p className="card-text">Quantity: {item.quantity}</p>
-                <p className="card-text">Price: ${item.productId.price.toFixed(2)}</p>
-                <p className="card-text">Subtotal: ${(item.quantity * item.productId.price).toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4">
-        <h4>Total: ${total.toFixed(2)}</h4>
-        <button className="btn btn-primary" onClick={handleCheckout}>
-          Checkout
-        </button>
-      </div>
-    </div>
-  );
+.cart-container {
+  padding: 20px;
 }
 
-export default Cart;
+.cart-item {
+  border-bottom: 1px solid #ddd;
+  padding: 10px 0;
+}
+
+.cart-total {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 20px;
+}
+
+.checkout-btn {
+  margin-top: 20px;
+}
