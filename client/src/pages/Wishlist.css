@@ -1,8 +1,33 @@
+/* styles/wishlist.css */
 .wishlist-page {
-    padding-top: 20px;
-  }
-  
-  .card-img-top {
-    height: 200px;
-    object-fit: cover;
-  }
+  padding: 20px;
+  text-align: center;
+}
+
+.wishlist-page h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  justify-content: center;
+}
+
+.wishlist-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.wishlist-btn.active {
+  color: red;
+}
+
+.wishlist-btn:hover {
+  opacity: 0.7;
+}
