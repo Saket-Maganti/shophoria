@@ -1,31 +1,20 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';  // ✅ Correct named import
+import { CartContext } from '../context/CartContext'; // Import CartContext
+import './Navbar.css';
 
 function Navbar() {
+  const { cartItemCount } = useContext(CartContext); // Access cartItemCount from context
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
-  
-  // ✅ Safely decode JWT and check isAdmin flag
-  let isAdmin = false;
-  if (token) {
-    try {
-      const decoded = jwtDecode(token);
-      isAdmin = decoded?.isAdmin || false;  // Adjust based on your token structure
-    } catch (error) {
-      console.error("Invalid token:", error);
-      localStorage.removeItem('token'); // Remove corrupted token
-    }
-  }
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    alert('Logged out successfully!');
-    navigate('/');
+    navigate('/login');
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <div className="container">
         <Link className="navbar-brand" to="/">Shophoria</Link>
         <button
@@ -45,38 +34,29 @@ function Navbar() {
               <Link className="nav-link" to="/">Home</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/cart">Cart</Link>
+              <Link className="nav-link" to="/cart">
+                Cart {cartItemCount > 0 && <span className="badge bg-primary">{cartItemCount}</span>}
+              </Link>
             </li>
             <li className="nav-item">
               <Link className="nav-link" to="/wishlist">Wishlist</Link>
             </li>
-            {token && (
-              <li className="nav-item">
-                <Link className="nav-link" to="/profile">Profile</Link>
-              </li>
-            )}
-            {isAdmin && (
-              <li className="nav-item">
-                <Link className="nav-link" to="/admin">Admin</Link>
-              </li>
-            )}
             {token ? (
-              <li className="nav-item">
-                <button
-                  className="nav-link btn btn-link"
-                  onClick={handleLogout}
-                  style={{ textDecoration: 'none' }}
-                >
-                  Logout
-                </button>
-              </li>
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/dashboard">Dashboard</Link>
+                </li>
+                <li className="nav-item">
+                  <button className="nav-link btn btn-link" onClick={handleLogout}>Logout</button>
+                </li>
+              </>
             ) : (
               <>
                 <li className="nav-item">
                   <Link className="nav-link" to="/login">Login</Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/signup">Signup</Link>
+                  <Link className="nav-link" to="/register">Register</Link>
                 </li>
               </>
             )}

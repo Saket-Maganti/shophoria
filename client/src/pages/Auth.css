@@ -1,0 +1,19 @@
+/* Validation Feedback */
+.is-valid {
+    border-color: #28a745 !important;
+  }
+  
+  .is-invalid {
+    border-color: #dc3545 !important;
+  }
+  
+  .invalid-feedback {
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+  }
+  
+  /* Ensure the input group works with validation */
+  .input-group .form-control.is-valid,
+  .input-group .form-control.is-invalid {
+    border-left: none;
+  }

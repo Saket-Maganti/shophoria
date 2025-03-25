@@ -1,82 +1,31 @@
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { useState } from 'react';
-import Home from './pages/Home';
-import ProductDetails from './pages/ProductDetails';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Orders from './pages/Orders';
-import Wishlist from './pages/Wishlist';
-import AdminPanel from './pages/AdminPanel';
-import Profile from './pages/Profile'; // Import Profile
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import ProtectedRoute from './components/ProtectedRoute';
-import './App.css';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Cart from './pages/Cart';
+import Wishlist from './pages/Wishlist';
+import Dashboard from './pages/Dashboard';
+import OrderDetails from './pages/OrderDetails'; // Import OrderDetails
+import { CartProvider } from './context/CartContext';
 
 function App() {
-  const [cart, setCart] = useState([]);
-
   return (
-    <Router>
-      <div>
+    <CartProvider>
+      <Router>
         <Navbar />
         <Routes>
-          <Route path="/" element={<Home cart={cart} setCart={setCart} />} />
-          <Route path="/product/:id" element={<ProductDetails cart={cart} setCart={setCart} />} />
-          <Route
-            path="/cart"
-            element={
-              <ProtectedRoute>
-                <Cart cart={cart} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/checkout"
-            element={
-              <ProtectedRoute>
-                <Checkout cart={cart} setCart={setCart} />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route
-            path="/orders"
-            element={
-              <ProtectedRoute>
-                <Orders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/wishlist"
-            element={
-              <ProtectedRoute>
-                <Wishlist cart={cart} setCart={setCart} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminPanel />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/register" element={<Register />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/order/:id" element={<OrderDetails />} /> {/* Add OrderDetails route */}
         </Routes>
-      </div>
-    </Router>
+      </Router>
+    </CartProvider>
   );
 }
 

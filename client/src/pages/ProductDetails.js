@@ -1,177 +1,158 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
-function ProductDetails({ cart, setCart }) {
+function ProductDetails() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
-  const [review, setReview] = useState({ rating: 5, comment: '' });
-  const [error, setError] = useState('');
-  const [wishlistError, setWishlistError] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
-    axios.get(`${API_BASE_URL}/api/products/${id}`)
-      .then(response => {
+    const fetchProduct = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/products/${id}`);
         setProduct(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching product:', error);
-      });
+      } catch (err) {
+        console.error('Error fetching product:', err);
+      }
+    };
+
+    fetchProduct();
   }, [id]);
 
-  const handleReviewChange = (e) => {
-    setReview({
-      ...review,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleReviewSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Please log in to submit a review.');
-        return;
+  const handleAddToCart = async () => {
+    if (token) {
+      try {
+        await axios.post(
+          `${API_BASE_URL}/api/cart`,
+          { productId: id, quantity },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        alert('Product added to cart!');
+        navigate('/cart');
+      } catch (err) {
+        console.error('Error adding to cart:', err);
       }
-
-      const response = await axios.post(
-        `${API_BASE_URL}/api/products/${id}/reviews`,
-        review,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+    } else {
+      const localCart = JSON.parse(localStorage.getItem('cart')) || [];
+      const existingItem = localCart.find(item => item.productId._id === id);
+      if (existingItem) {
+        existingItem.quantity += quantity;
+      } else {
+        localCart.push({
+          productId: {
+            _id: id,
+            name: product.name,
+            price: product.price,
           },
-        }
-      );
-
-      setProduct(response.data);
-      setReview({ rating: 5, comment: '' });
-      setError('');
-    } catch (err) {
-      setError(err.response?.data?.msg || 'Error submitting review');
+          quantity,
+        });
+      }
+      localStorage.setItem('cart', JSON.stringify(localCart));
+      alert('Product added to cart!');
+      navigate('/cart');
     }
   };
 
-  const addToCart = (product) => {
-    setCart([...cart, product]);
-    alert(`${product.name} added to cart!`);
-  };
-
-  const addToWishlist = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setWishlistError('Please log in to add to wishlist.');
-        return;
+  const handleAddToWishlist = async () => {
+    if (token) {
+      try {
+        await axios.post(
+          `${API_BASE_URL}/api/wishlist`,
+          { productId: id },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        alert('Product added to wishlist!');
+      } catch (err) {
+        console.error('Error adding to wishlist:', err);
       }
-
-      await axios.post(
-        `${API_BASE_URL}/api/wishlist/${id}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      alert(`${product.name} added to wishlist!`);
-      setWishlistError('');
-    } catch (err) {
-      setWishlistError(err.response?.data?.msg || 'Error adding to wishlist');
+    } else {
+      const localWishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
+      const existingItem = localWishlist.find(item => item._id === id);
+      if (!existingItem) {
+        localWishlist.push({
+          _id: id,
+          name: product.name,
+          price: product.price,
+        });
+        localStorage.setItem('wishlist', JSON.stringify(localWishlist));
+        alert('Product added to wishlist!');
+      } else {
+        alert('Product is already in your wishlist!');
+      }
     }
   };
 
-  if (!product) {
-    return <div className="container">Loading...</div>;
-  }
+  const renderStars = (rating) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <span key={i} className={i <= rating ? 'star filled' : 'star'}>
+          ★
+        </span>
+      );
+    }
+    return stars;
+  };
 
-  const averageRating =
-    product.reviews && product.reviews.length > 0
-      ? (product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length).toFixed(1)
-      : 'No reviews yet';
+  if (!product) return (
+    <div className="text-center my-5">
+      <div className="spinner-border text-primary" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="container my-4">
-      <div className="row">
-        <div className="col-md-6">
-          {product.images && product.images.length > 0 ? (
-            <img
-              src={product.images[0]}
-              alt={product.name}
-              className="img-fluid"
-              style={{ maxHeight: '400px', objectFit: 'cover' }}
-            />
-          ) : (
-            <div className="bg-secondary text-white d-flex align-items-center justify-content-center" style={{ height: '400px' }}>
-              No Image
+    <div className="container my-5">
+      <div className="card shadow-sm p-4">
+        <div className="row">
+          <div className="col-md-6">
+            <div className="product-image">
+              <img src={product.images[0]} alt={product.name} className="img-fluid rounded" />
             </div>
-          )}
-        </div>
-        <div className="col-md-6">
-          <h2>{product.name}</h2>
-          <p>{product.description}</p>
-          <p><strong>Price:</strong> ${product.price}</p>
-          <p><strong>Category:</strong> {product.category}</p>
-          <p><strong>Average Rating:</strong> {averageRating} / 5</p>
-          <button className="btn btn-primary mb-2 me-2" onClick={() => addToCart(product)}>
-            Add to Cart
-          </button>
-          <button className="btn btn-secondary mb-2" onClick={addToWishlist}>
-            Add to Wishlist
-          </button>
-          {wishlistError && <div className="alert alert-danger mt-2">{wishlistError}</div>}
-
-          <h3 className="mt-4">Reviews</h3>
-          {product.reviews && product.reviews.length > 0 ? (
-            <ul className="list-group mb-4">
-              {product.reviews.map(review => (
-                <li key={review._id} className="list-group-item">
-                  <strong>{review.user.name}</strong> rated it {review.rating}/5
-                  <p>{review.comment}</p>
-                  <small>{new Date(review.createdAt).toLocaleDateString()}</small>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No reviews yet. Be the first to leave a review!</p>
-          )}
-
-          <h4>Leave a Review</h4>
-          {error && <div className="alert alert-danger">{error}</div>}
-          <form onSubmit={handleReviewSubmit}>
-            <div className="mb-3">
-              <label htmlFor="rating" className="form-label">Rating (1-5)</label>
-              <select
-                className="form-control"
-                id="rating"
-                name="rating"
-                value={review.rating}
-                onChange={handleReviewChange}
-                required
-              >
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-              </select>
+          </div>
+          <div className="col-md-6">
+            <h1 className="mb-3">{product.name}</h1>
+            <div className="d-flex align-items-center mb-3">
+              <div className="product-rating me-2">
+                {renderStars(product.rating || 0)}
+              </div>
+              <span className="text-muted">({product.rating || 0}/5)</span>
             </div>
+            <h3 className="text-primary mb-3">${product.price}</h3>
+            <p className="text-muted mb-4">{product.description}</p>
             <div className="mb-3">
-              <label htmlFor="comment" className="form-label">Comment</label>
-              <textarea
-                className="form-control"
-                id="comment"
-                name="comment"
-                value={review.comment}
-                onChange={handleReviewChange}
-                required
+              <label htmlFor="quantity" className="form-label">Quantity:</label>
+              <input
+                type="number"
+                id="quantity"
+                className="form-control w-25"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value)))}
+                min="1"
               />
             </div>
-            <button type="submit" className="btn btn-primary">Submit Review</button>
-          </form>
+            <div className="d-flex gap-3">
+              <button onClick={handleAddToCart} className="btn btn-primary">
+                Add to Cart
+              </button>
+              <button onClick={handleAddToWishlist} className="btn btn-outline-secondary">
+                Add to Wishlist
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

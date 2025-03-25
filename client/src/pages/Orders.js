@@ -1,69 +1,124 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { API_BASE_URL } from '../config';
+const express = require('express');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
+const Order = require('../models/Order');
+const Cart = require('../models/Cart');
+const mongoose = require('mongoose');
 
-function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [error, setError] = useState('');
+// Get all orders for a user (protected route)
+router.get('/', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ msg: 'No token, authorization denied' });
+  }
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('Please log in to view your orders.');
-          return;
-        }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    console.log('Fetching orders for user:', decoded.user.id); // Debug
+    if (!mongoose.Types.ObjectId.isValid(decoded.user.id)) {
+      return res.status(400).json({ msg: 'Invalid user ID' });
+    }
+    const orders = await Order.find({ userId: decoded.user.id }).populate('items.productId');
+    console.log('Fetched orders:', orders); // Debug
+    res.json(orders);
+  } catch (err) {
+    console.error('Error fetching orders:', err.message);
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ msg: 'Token expired, please log in again' });
+    }
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
 
-        const response = await axios.get(`${API_BASE_URL}/api/orders`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setOrders(response.data);
-      } catch (err) {
-        setError(err.response?.data?.msg || 'Error fetching orders');
-      }
-    };
+// Get a specific order by ID (protected route)
+router.get('/:id', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ msg: 'No token, authorization denied' });
+  }
 
-    fetchOrders();
-  }, []);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    const orderId = req.params.id;
 
-  return (
-    <div className="container my-4">
-      <h1 className="text-center mb-4">Your Orders</h1>
-      {error && <div className="alert alert-danger">{error}</div>}
-      {orders.length === 0 && !error ? (
-        <p>You have no orders yet.</p>
-      ) : (
-        <div>
-          {orders.map(order => (
-            <div key={order._id} className="card mb-3">
-              <div className="card-header">
-                Order placed on {new Date(order.createdAt).toLocaleDateString()}
-              </div>
-              <div className="card-body">
-                <h5 className="card-title">Order Total: ${order.totalPrice.toFixed(2)}</h5>
-                <p className="card-text">Status: {order.status}</p>
-                <h6>Shipping Info:</h6>
-                <p>
-                  {order.shippingInfo.address}, {order.shippingInfo.city}, {order.shippingInfo.postalCode}, {order.shippingInfo.country}
-                </p>
-                <h6>Items:</h6>
-                <ul>
-                  {order.items.map(item => (
-                    <li key={item._id}>
-                      {item.name} - ${item.price} (x{item.quantity})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ msg: 'Invalid order ID' });
+    }
 
-export default Orders;
+    if (!mongoose.Types.ObjectId.isValid(decoded.user.id)) {
+      return res.status(400).json({ msg: 'Invalid user ID' });
+    }
+
+    console.log('Fetching order:', orderId, 'for user:', decoded.user.id); // Debug
+    const order = await Order.findOne({ _id: orderId, userId: decoded.user.id }).populate('items.productId');
+    if (!order) {
+      return res.status(404).json({ msg: 'Order not found' });
+    }
+    console.log('Fetched order:', order); // Debug
+    res.json(order);
+  } catch (err) {
+    console.error('Error fetching order:', err.message);
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ msg: 'Token expired, please log in again' });
+    }
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// Create a new order from the cart (protected route)
+router.post('/', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ msg: 'No token, authorization denied' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    const userId = decoded.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ msg: 'Invalid user ID' });
+    }
+
+    // Fetch the user's cart
+    const cart = await Cart.findOne({ userId }).populate('items.productId');
+    console.log('Fetched cart for order:', cart); // Debug
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return res.status(400).json({ msg: 'Cart is empty' });
+    }
+
+    // Calculate the total
+    const total = cart.items.reduce((sum, item) => {
+      return sum + (item.quantity * item.productId.price);
+    }, 0);
+
+    // Create a new order
+    const order = new Order({
+      userId,
+      items: cart.items.map(item => ({
+        productId: item.productId._id,
+        quantity: item.quantity
+      })),
+      total,
+      status: 'Pending'
+    });
+
+    await order.save();
+    console.log('Created order:', order); // Debug
+
+    // Clear the cart
+    cart.items = [];
+    await cart.save();
+    console.log('Cart cleared after order:', cart); // Debug
+
+    res.json(order);
+  } catch (err) {
+    console.error('Error creating order:', err.message);
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ msg: 'Token expired, please log in again' });
+    }
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+module.exports = router;

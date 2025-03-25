@@ -4,47 +4,66 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Middleware to authenticate JWT token
-const auth = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return res.status(401).json({ msg: 'No token, authorization denied' });
-  }
+// Register a new user
+router.post('/register', async (req, res) => {
+  const { name, email, password } = req.body;
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded.user;
-    next();
-  } catch (err) {
-    res.status(401).json({ msg: 'Token is not valid' });
-  }
-};
-
-// Login user
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
+    // Check if user already exists
     let user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
+    if (user) {
+      return res.status(400).json({ msg: 'Email already exists' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
+    // Validate input
+    if (!name || !email || !password) {
+      return res.status(400).json({ msg: 'Please provide all required fields' });
     }
 
+    if (!/^[a-zA-Z\s]+$/.test(name)) {
+      return res.status(400).json({ msg: 'Name can only contain letters and spaces' });
+    }
+
+    if (name.length < 2) {
+      return res.status(400).json({ msg: 'Name must be at least 2 characters' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ msg: 'Invalid email format' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ msg: 'Password must be at least 8 characters' });
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
+      return res.status(400).json({ msg: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character' });
+    }
+
+    // Create new user
+    user = new User({
+      name,
+      email,
+      password,
+    });
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    // Save user to database
+    await user.save();
+
+    // Create and return JWT
     const payload = {
       user: {
         id: user.id,
-        isAdmin: user.isAdmin,
       },
     };
 
     jwt.sign(
       payload,
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'your_jwt_secret',
       { expiresIn: '1h' },
       (err, token) => {
         if (err) throw err;
@@ -53,79 +72,46 @@ router.post('/login', async (req, res) => {
     );
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server error');
+    res.status(500).json({ msg: 'Server error' });
   }
 });
 
-// Signup user
-router.post('/signup', async (req, res) => {
-  const { name, email, password } = req.body;
+// Login a user
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
 
   try {
+    // Check if user exists
     let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ msg: 'User already exists' });
-    }
-
-    user = new User({
-      name,
-      email,
-      password,
-    });
-
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-
-    await user.save();
-
-    res.json({ msg: 'User registered successfully' });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
-  }
-});
-
-// Get user profile
-router.get('/profile', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.json(user);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
-  }
-});
-
-// Update user profile
-router.put('/profile', auth, async (req, res) => {
-  const { name, email, password } = req.body;
-
-  try {
-    const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ msg: 'User not found' });
+      return res.status(400).json({ msg: 'Invalid credentials' });
     }
 
-    // Update fields if provided
-    if (name) user.name = name;
-    if (email) {
-      // Check if the new email is already taken by another user
-      const existingUser = await User.findOne({ email });
-      if (existingUser && existingUser.id !== user.id) {
-        return res.status(400).json({ msg: 'Email already in use' });
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: 'Invalid credentials' });
+    }
+
+    // Create and return JWT
+    const payload = {
+      user: {
+        id: user.id,
+      },
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET || 'your_jwt_secret',
+      { expiresIn: '1h' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
       }
-      user.email = email;
-    }
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
-    }
-
-    await user.save();
-    res.json({ msg: 'Profile updated successfully', user: { name: user.name, email: user.email } });
+    );
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server error');
+    res.status(500).json({ msg: 'Server error' });
   }
 });
 

@@ -1,78 +1,83 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const Wishlist = require('../models/Wishlist');
+const mongoose = require('mongoose');
 
-// Middleware to authenticate JWT token
-const auth = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+// Add item to wishlist (protected route)
+router.post('/', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
     return res.status(401).json({ msg: 'No token, authorization denied' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded.user;
-    next();
-  } catch (err) {
-    res.status(401).json({ msg: 'Token is not valid' });
-  }
-};
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    const { productId } = req.body;
 
-// Get user's wishlist
-router.get('/', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).populate('wishlist.product');
-    res.json(user.wishlist);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
-  }
-});
+    if (!productId) {
+      return res.status(400).json({ msg: 'Product ID is required' });
+    }
 
-// Add a product to the wishlist
-router.post('/:productId', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    const productId = req.params.productId;
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ msg: 'Invalid product ID' });
+    }
+
+    console.log('User ID:', decoded.user.id); // Debug
+    console.log('Product ID:', productId); // Debug
+
+    // Find or create the user's wishlist
+    let wishlist = await Wishlist.findOne({ userId: decoded.user.id });
+    console.log('Wishlist before update:', wishlist); // Debug
+    if (!wishlist) {
+      wishlist = new Wishlist({ userId: decoded.user.id, items: [] });
+    }
 
     // Check if the product is already in the wishlist
-    const alreadyInWishlist = user.wishlist.find(
-      item => item.product.toString() === productId
-    );
-    if (alreadyInWishlist) {
+    const itemExists = wishlist.items.some(item => item.productId.toString() === productId);
+    if (itemExists) {
       return res.status(400).json({ msg: 'Product already in wishlist' });
     }
 
-    user.wishlist.push({ product: productId });
-    await user.save();
-
-    // Populate the product field for the response
-    await user.populate('wishlist.product');
-    res.json(user.wishlist);
+    // Add new product to wishlist
+    wishlist.items.push({ productId });
+    await wishlist.save();
+    console.log('Wishlist after save:', wishlist); // Debug
+    res.json(wishlist);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Error adding to wishlist:', err.message);
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ msg: 'Token expired, please log in again' });
+    }
+    res.status(500).json({ msg: 'Server error' });
   }
 });
 
-// Remove a product from the wishlist
-router.delete('/:productId', auth, async (req, res) => {
+// Get user's wishlist (protected route)
+router.get('/', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ msg: 'No token, authorization denied' });
+  }
+
   try {
-    const user = await User.findById(req.user.id);
-    const productId = req.params.productId;
-
-    user.wishlist = user.wishlist.filter(
-      item => item.product.toString() !== productId
-    );
-    await user.save();
-
-    // Populate the product field for the response
-    await user.populate('wishlist.product');
-    res.json(user.wishlist);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    console.log('Fetching wishlist for user:', decoded.user.id); // Debug
+    if (!mongoose.Types.ObjectId.isValid(decoded.user.id)) {
+      return res.status(400).json({ msg: 'Invalid user ID' });
+    }
+    const wishlist = await Wishlist.findOne({ userId: decoded.user.id }).populate('items.productId');
+    console.log('Fetched wishlist:', wishlist); // Debug
+    if (!wishlist) {
+      return res.status(404).json({ msg: 'Wishlist not found' });
+    }
+    res.json(wishlist);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Error fetching wishlist:', err.message);
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ msg: 'Token expired, please log in again' });
+    }
+    res.status(500).json({ msg: 'Server error' });
   }
 });
 

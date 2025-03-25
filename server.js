@@ -17,20 +17,28 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(bodyParser.json());
 
+// Routes
+const authRoutes = require('./routes/auth');
+console.log('authRoutes loaded:', !!authRoutes); // Debug
+const productRoutes = require('./routes/products');
+console.log('productRoutes loaded:', !!productRoutes); // Debug
+const orderRoutes = require('./routes/orders');
+console.log('orderRoutes loaded:', !!orderRoutes); // Debug
+const wishlistRoutes = require('./routes/wishlist');
+console.log('wishlistRoutes loaded:', !!wishlistRoutes); // Debug
+const cartRoutes = require('./routes/cart');
+console.log('cartRoutes loaded:', !!cartRoutes); // Debug
+
+app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/wishlist', wishlistRoutes); // Ensure this line is present
+app.use('/api/cart', cartRoutes);
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log('MongoDB connection error:', err));
-
-// Routes
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products');
-const orderRoutes = require('./routes/orders')(stripe);
-const wishlistRoutes = require('./routes/wishlist');
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/wishlist', wishlistRoutes);
 
 // Start the server
 app.listen(PORT, () => {

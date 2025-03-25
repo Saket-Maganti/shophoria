@@ -1,0 +1,12 @@
+.dashboard-page {
+    padding-top: 20px;
+  }
+  
+  .list-group-item {
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .list-group-item:hover {
+    background-color: #f8f9fa;
+  }

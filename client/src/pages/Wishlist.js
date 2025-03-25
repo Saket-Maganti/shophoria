@@ -1,90 +1,79 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-import { Link } from 'react-router-dom';
+import './Wishlist.css';
 
-function Wishlist({ cart, setCart }) {
-  const [wishlist, setWishlist] = useState([]);
-  const [error, setError] = useState('');
+function Wishlist() {
+  const [wishlist, setWishlist] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchWishlist = async () => {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please log in to view your wishlist!');
+        window.location.href = '/login';
+        return;
+      }
+
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('Please log in to view your wishlist.');
-          return;
-        }
-
         const response = await axios.get(`${API_BASE_URL}/api/wishlist`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` }
         });
-
+        console.log('Fetched wishlist:', JSON.stringify(response.data, null, 2)); // Debug
         setWishlist(response.data);
       } catch (err) {
-        setError(err.response?.data?.msg || 'Error fetching wishlist');
+        console.error('Error fetching wishlist:', err.response ? err.response.data : err.message);
+        if (err.response && err.response.data.msg === 'Token expired, please log in again') {
+          alert('Your session has expired. Please log in again.');
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        } else {
+          alert('Failed to fetch wishlist. Please try again.');
+        }
+      } finally {
+        setLoading(false);
       }
     };
-
     fetchWishlist();
   }, []);
 
-  const addToCart = (product) => {
-    setCart([...cart, product]);
-    alert(`${product.name} added to cart!`);
-  };
+  if (loading) {
+    return (
+      <div className="text-center my-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
-  const removeFromWishlist = async (productId) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.delete(`${API_BASE_URL}/api/wishlist/${productId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      setWishlist(response.data);
-      alert('Product removed from wishlist!');
-    } catch (err) {
-      setError(err.response?.data?.msg || 'Error removing from wishlist');
-    }
-  };
+  if (!wishlist || !wishlist.items || wishlist.items.length === 0) {
+    return <div className="container my-5"><h2>Your wishlist is empty.</h2></div>;
+  }
 
   return (
-    <div className="container my-4">
-      <h1 className="text-center mb-4">Your Wishlist</h1>
-      {error && <div className="alert alert-danger">{error}</div>}
-      {wishlist.length === 0 && !error ? (
-        <p>Your wishlist is empty. <Link to="/">Go shopping</Link></p>
-      ) : (
-        <ul className="list-group">
-          {wishlist.map(item => (
-            <li key={item._id} className="list-group-item d-flex justify-content-between align-items-center">
-              <div>
-                <Link to={`/product/${item.product._id}`} className="text-decoration-none">
-                  {item.product.name} - ${item.product.price}
-                </Link>
+    <div className="container my-5">
+      <h2>Your Wishlist</h2>
+      <div className="row">
+        {wishlist.items.map(item => (
+          <div key={item.productId._id} className="col-md-4 mb-4">
+            <div className="card h-100 shadow-sm">
+              <img
+                src={item.productId.images?.[0] || 'https://placehold.it/150x150'}
+                className="card-img-top"
+                alt={item.productId.name}
+              />
+              <div className="card-body">
+                <h5 className="card-title">{item.productId.name}</h5>
+                <p className="card-text">{item.productId.description}</p>
+                <p className="card-text text-primary">${item.productId.price.toFixed(2)}</p>
               </div>
-              <div>
-                <button
-                  className="btn btn-primary btn-sm me-2"
-                  onClick={() => addToCart(item.product)}
-                >
-                  Add to Cart
-                </button>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => removeFromWishlist(item.product._id)}
-                >
-                  Remove
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
