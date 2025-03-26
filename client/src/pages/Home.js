@@ -1,217 +1,121 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-import { CartContext } from '../context/CartContext';
-import './Home.css';
+import { UserContext } from '../context/UserContext';
+import '../styles/Home.css';
 
 function Home() {
-  const { refreshCart } = useContext(CartContext);
+  const { addToWishlist } = useContext(UserContext);
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState('All');
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('');
-  const [priceRange, setPriceRange] = useState(1000);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const productGridRef = useRef(null);
+  const categorySectionRef = useRef(null); // New ref for category section
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/products`);
-        console.log('Fetched products:', response.data); // Debug
-        setProducts(response.data);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
+    axios.get(`${API_BASE_URL}/api/products`)
+      .then(res => {
+        setProducts(res.data);
+        const uniqueCategories = [...new Set(res.data.map(p => p.category))];
+        setCategories(uniqueCategories);
+      })
+      .catch(err => console.log('Error fetching products:', err));
   }, []);
 
-  // Filter and sort products
-  const filteredProducts = products
-    .filter(product => 
-      (category === 'All' || product.category === category) &&
-      product.name.toLowerCase().includes(search.toLowerCase()) &&
-      product.price <= priceRange
-    )
-    .sort((a, b) => {
-      if (sortBy === 'price-asc') return a.price - b.price;
-      if (sortBy === 'price-desc') return b.price - a.price;
-      return 0;
-    });
+  const filteredProducts = selectedCategory
+    ? products.filter(p => p.category === selectedCategory)
+    : [];
 
-  // Add to Cart function
-  const handleAddToCart = async (productId) => {
-    console.log('Adding to cart:', productId); // Debug
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Please log in to add items to your cart!');
-      window.location.href = '/login';
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/cart`,
-        { productId, quantity: 1 },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      console.log('Add to cart response:', JSON.stringify(response.data, null, 2)); // Detailed debug
-      alert('Product added to cart!');
-      refreshCart();
-    } catch (err) {
-      console.error('Error adding to cart:', err.response ? err.response.data : err.message);
-      if (err.response && err.response.data.msg === 'Token expired, please log in again') {
-        alert('Your session has expired. Please log in again.');
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      } else {
-        alert('Failed to add product to cart. Please try again.');
-      }
+  const handleShopNowClick = () => {
+    if (productGridRef.current) {
+      // If a category is selected and product grid exists, scroll to it
+      productGridRef.current.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Otherwise, scroll to the category section to prompt selection
+      categorySectionRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  // Add to Wishlist function
-  const handleAddToWishlist = async (productId) => {
-    console.log('Adding to wishlist:', productId); // Debug
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Please log in to add items to your wishlist!');
-      window.location.href = '/login';
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/wishlist`,
-        { productId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      console.log('Add to wishlist response:', JSON.stringify(response.data, null, 2)); // Debug
-      alert('Product added to wishlist!');
-    } catch (err) {
-      console.error('Error adding to wishlist:', err.response ? err.response.data : err.message);
-      if (err.response && err.response.data.msg === 'Token expired, please log in again') {
-        alert('Your session has expired. Please log in again.');
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      } else if (err.response && err.response.data.msg === 'Product already in wishlist') {
-        alert('This product is already in your wishlist!');
-      } else {
-        alert('Failed to add product to wishlist. Please try again.');
-      }
-    }
+  // Map categories to images
+  const categoryImages = {
+    Smartphones: 'https://images.pexels.com/photos/788946/pexels-photo-788946.jpeg?auto=compress&cs=tinysrgb&w=600',
+    Laptops: 'https://images.pexels.com/photos/1229861/pexels-photo-1229861.jpeg?auto=compress&cs=tinysrgb&w=600',
+    Sneakers: 'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=600',
+    Headphones: 'https://images.pexels.com/photos/205926/pexels-photo-205926.jpeg?auto=compress&cs=tinysrgb&w=600',
+    'Home Appliances': 'https://images.pexels.com/photos/4394135/pexels-photo-4394135.jpeg?auto=compress&cs=tinysrgb&w=600',
+    Clothing: 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=600',
+    Books: 'https://images.pexels.com/photos/159711/books-bookstore-book-reading-159711.jpeg?auto=compress&cs=tinysrgb&w=600'
   };
-
-  if (loading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="home-page">
+    <div>
       {/* Hero Section */}
-      <div className="hero-section text-center text-white">
-        <h1>Welcome to Shophoria</h1>
-        <p>Discover the best deals on your favorite products!</p>
-        <a href="#products" className="btn btn-primary btn-lg">Shop Now</a>
+      <div className="hero-section">
+        <div className="hero-overlay">
+          <div className="container text-center text-white">
+            <h1 className="display-4 fw-bold">Welcome to Shophoria</h1>
+            <p className="lead">Discover the best deals on your favorite products!</p>
+            <button className="btn btn-primary btn-lg mt-3" onClick={handleShopNowClick}>
+              Shop Now
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Filters Section */}
+      {/* Main Content */}
       <div className="container my-5">
-        <div className="row mb-4">
-          <div className="col-md-3">
-            <h5>Categories</h5>
-            <select
-              className="form-select"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="All">All</option>
-              <option value="Electronics">Electronics</option>
-              <option value="Clothing">Clothing</option>
-              <option value="Books">Books</option>
-            </select>
-          </div>
-          <div className="col-md-3">
-            <h5>Search</h5>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Search products..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="col-md-3">
-            <h5>Sort By</h5>
-            <select
-              className="form-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="">Default</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-            </select>
-          </div>
-          <div className="col-md-3">
-            <h5>Price Range: $0 - ${priceRange}</h5>
-            <input
-              type="range"
-              className="form-range"
-              min="0"
-              max="1000"
-              value={priceRange}
-              onChange={(e) => setPriceRange(e.target.value)}
-            />
+        {/* Category Filter */}
+        <div className="category-filter" ref={categorySectionRef}>
+          <h3 className="text-center mb-4">Shop by Category</h3>
+          <div className="category-grid">
+            {categories.map(category => (
+              <button
+                key={category}
+                className={`category-card ${selectedCategory === category ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category === selectedCategory ? '' : category)}
+              >
+                <img src={categoryImages[category] || 'https://via.placeholder.com/100'} alt={category} />
+                <span>{category}</span>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Products Section */}
-        <div className="row" id="products">
-          {filteredProducts.length === 0 ? (
-            <p>No products found.</p>
-          ) : (
-            filteredProducts.map(product => (
-              <div key={product._id} className="col-md-4 mb-4">
-                <div className="card h-100 shadow-sm">
-                  <img
-                    src={product.images?.[0] || 'https://placehold.it/150x150'}
-                    className="card-img-top"
-                    alt={product.name}
-                  />
-                  <div className="card-body">
-                    <h5 className="card-title">{product.name}</h5>
-                    <p className="card-text">{product.description}</p>
-                    <p className="card-text text-primary">${product.price.toFixed(2)}</p>
-                    <div className="d-flex gap-2">
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => handleAddToCart(product._id)}
-                      >
-                        Add to Cart
-                      </button>
-                      <button
-                        className="btn btn-outline-secondary"
-                        onClick={() => handleAddToWishlist(product._id)}
-                      >
-                        Add to Wishlist
-                      </button>
+        {/* Product Grid (only shown when a category is selected) */}
+        {selectedCategory && (
+          <div className="row" ref={productGridRef}>
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map(product => (
+                <div key={product._id} className="col-md-4 mb-4">
+                  <div className="card h-100 shadow-sm">
+                    <img
+                      src={product.images[0] || 'https://via.placeholder.com/150'}
+                      className="card-img-top"
+                      alt={product.name}
+                      style={{ height: '200px', objectFit: 'cover' }}
+                    />
+                    <div className="card-body">
+                      <h5 className="card-title">{product.name}</h5>
+                      <p className="card-text text-muted">{product.description}</p>
+                      <p className="card-text fw-bold">${product.price.toFixed(2)}</p>
+                      <div className="d-flex justify-content-between">
+                        <button className="btn btn-primary">Add to Cart</button>
+                        <button
+                          className="btn btn-outline-danger"
+                          onClick={() => addToWishlist(product)}
+                        >
+                          Add to Wishlist
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            ) : (
+              <p className="text-center">No products found in this category.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

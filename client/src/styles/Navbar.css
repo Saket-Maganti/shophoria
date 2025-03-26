@@ -1,0 +1,58 @@
+.custom-navbar {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px 0;
+  }
+  
+  .custom-brand {
+    font-size: 1.8rem;
+    font-weight: 700;
+    transition: color 0.3s ease;
+    font-family: 'Poppins', sans-serif; /* Modern font */
+  }
+  
+  .custom-brand:hover {
+    color: #00d4ff; /* Light cyan on hover */
+  }
+  
+  .custom-nav-links .nav-link {
+    font-size: 1.1rem;
+    padding: 10px 20px;
+    position: relative;
+    transition: color 0.3s ease;
+  }
+  
+  .custom-nav-links .nav-link:hover {
+    color: #00d4ff; /* Light cyan on hover */
+  }
+  
+  .custom-nav-links .nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    background-color: #00d4ff;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: width 0.3s ease;
+  }
+  
+  .custom-nav-links .nav-link:hover::after {
+    width: 50%;
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .custom-brand {
+      font-size: 1.5rem;
+    }
+  
+    .custom-nav-links .nav-link {
+      padding: 10px;
+      text-align: center;
+    }
+  
+    .custom-nav-links .nav-link::after {
+      bottom: 0;
+    }
+  }

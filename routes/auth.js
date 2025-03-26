@@ -2,129 +2,124 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { body, validationResult } = require('express-validator');
+const auth = require('../middleware/auth');
 const User = require('../models/User');
-const { protect } = require('../middleware/authMiddleware'); 
-
 
 // Register a new user
-router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
-
-  try {
-    // Check if user already exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ msg: 'Email already exists' });
+router.post(
+  '/register',
+  [
+    body('name').trim().notEmpty().withMessage('Name is required'),
+    body('email').isEmail().withMessage('Please provide a valid email'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    // Validate input
-    if (!name || !email || !password) {
-      return res.status(400).json({ msg: 'Please provide all required fields' });
-    }
+    const { name, email, password } = req.body;
 
-    if (!/^[a-zA-Z\s]+$/.test(name)) {
-      return res.status(400).json({ msg: 'Name can only contain letters and spaces' });
-    }
-
-    if (name.length < 2) {
-      return res.status(400).json({ msg: 'Name must be at least 2 characters' });
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ msg: 'Invalid email format' });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ msg: 'Password must be at least 8 characters' });
-    }
-
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
-      return res.status(400).json({ msg: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character' });
-    }
-
-    // Create new user
-    user = new User({
-      name,
-      email,
-      password,
-    });
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-
-    // Save user to database
-    await user.save();
-
-    // Create and return JWT
-    const payload = {
-      user: {
-        id: user.id,
-      },
-    };
-
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET || 'your_jwt_secret',
-      { expiresIn: '1h' },
-      (err, token) => {
-        if (err) throw err;
-        res.json({ token });
+    try {
+      let user = await User.findOne({ email });
+      if (user) {
+        return res.status(400).json({ msg: 'User already exists' });
       }
-    );
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
+
+      user = new User({
+        name,
+        email,
+        password,
+      });
+
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+
+      await user.save();
+
+      const payload = {
+        user: {
+          id: user.id,
+        },
+      };
+
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET || 'your_jwt_secret',
+        { expiresIn: '1h' },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
+    } catch (err) {
+      console.error('Error in /api/auth/register:', err);
+      if (err.code === 11000) {
+        return res.status(400).json({ msg: 'Email already exists' });
+      }
+      res.status(500).json({ msg: 'Server error', error: err.message });
+    }
   }
-});
+);
 
 // Login a user
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    // Check if user exists
-    let user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
+router.post(
+  '/login',
+  [
+    body('email').isEmail().withMessage('Please provide a valid email'),
+    body('password').notEmpty().withMessage('Password is required'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
-    }
+    const { email, password } = req.body;
 
-    // Create and return JWT
-    const payload = {
-      user: {
-        id: user.id,
-      },
-    };
-
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET || 'your_jwt_secret',
-      { expiresIn: '1h' },
-      (err, token) => {
-        if (err) throw err;
-        res.json({ token });
+    try {
+      let user = await User.findOne({ email });
+      if (!user) {
+        return res.status(400).json({ msg: 'Invalid credentials' });
       }
-    );
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
 
-// Get logged-in user
-router.get('/user', protect, async (req, res)  => {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ msg: 'Invalid credentials' });
+      }
+
+      const payload = {
+        user: {
+          id: user.id,
+        },
+      };
+
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET || 'your_jwt_secret',
+        { expiresIn: '1h' },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
+    } catch (err) {
+      console.error('Error in /api/auth/login:', err);
+      res.status(500).json({ msg: 'Server error', error: err.message });
+    }
+  }
+);
+
+// Get authenticated user details
+router.get('/user', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     res.json(user);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
+    console.error('Error in /api/auth/user:', err);
+    res.status(500).json({ msg: 'Server error', error: err.message });
   }
 });
 

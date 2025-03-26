@@ -1,0 +1,89 @@
+.product-details-container {
+    padding: 3rem 0;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+  }
+  
+  .product-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+  }
+  
+  .product-description {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+  }
+  
+  .product-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #e74c3c;
+    margin-bottom: 1rem;
+  }
+  
+  .product-category {
+    font-size: 1rem;
+    color: #34495e;
+    margin-bottom: 1.5rem;
+  }
+  
+  .product-image {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 400px;
+    object-fit: cover;
+  }
+  
+  .quantity-selector {
+    margin-bottom: 1.5rem;
+  }
+  
+  .quantity-selector label {
+    font-size: 1rem;
+    color: #34495e;
+  }
+  
+  .quantity-selector input {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: 0.5rem;
+    font-size: 0.95rem;
+  }
+  
+  .action-buttons .btn {
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+  }
+  
+  .action-buttons .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+  }
+  
+  .action-buttons .btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+  }
+  
+  .action-buttons .btn-outline-secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+  }
+  
+  .action-buttons .btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: #ffffff;
+  }
+  
+  .btn-link {
+    color: #007bff;
+    text-decoration: none;
+  }
+  
+  .btn-link:hover {
+    text-decoration: underline;
+  }
