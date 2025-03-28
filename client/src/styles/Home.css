@@ -1,146 +1,108 @@
-/* Hero Section */
 .hero-section {
-    background-image: url('https://images.pexels.com/photos/994473/pexels-photo-994473.jpeg?auto=compress&cs=tinysrgb&w=1920');
-    background-size: cover;
-    background-position: center;
-    height: 500px;
-    position: relative;
-  }
-  
-  .hero-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5); /* Dark overlay */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .hero-section h1 {
-    font-size: 3.5rem;
-    font-weight: 700;
-  }
-  
-  .hero-section .lead {
-    font-size: 1.5rem;
-  }
-  
-  .hero-section .btn-primary {
-    background-color: #007bff;
-    border: none;
-    padding: 10px 30px;
-    font-size: 1.2rem;
-  }
-  
-  .hero-section .btn-primary:hover {
-    background-color: #0056b3;
-  }
-  
-  /* Category Filter */
-  .category-filter {
-    text-align: center;
-  }
-  
-  .category-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-  }
-  
-  .category-card {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 15px;
-    width: 150px;
-    text-align: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-    cursor: pointer;
-  }
-  
-  .category-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  }
-  
-  .category-card.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-  }
-  
-  .category-card img {
-    width: 100px;
-    height: 100px;
-    object-fit: cover;
-    border-radius: 5px;
-    margin-bottom: 10px;
-  }
-  
-  .category-card span {
-    font-size: 1.1rem;
-    font-weight: 500;
-  }
-  
-  /* Product Grid */
-  .card {
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  
-  .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  }
-  
-  .btn-primary {
-    background-color: #007bff;
-    border: none;
-  }
-  
-  .btn-primary:hover {
-    background-color: #0056b3;
-  }
-  
-  .btn-outline-primary {
-    color: #007bff;
-    border-color: #007bff;
-  }
-  
-  .btn-outline-primary:hover {
-    background-color: #007bff;
-    color: white;
-  }
-  
-  .btn-outline-danger {
-    color: #dc3545;
-    border-color: #dc3545;
-  }
-  
-  .btn-outline-danger:hover {
-    background-color: #dc3545;
-    color: white;
-  }
-  
-  /* Responsive Adjustments */
-  @media (max-width: 768px) {
-    .hero-section {
-      height: 400px;
-    }
-    .hero-section h1 {
-      font-size: 2.5rem;
-    }
-    .hero-section .lead {
-      font-size: 1.2rem;
-    }
-    .category-card {
-      width: 120px;
-    }
-    .category-card img {
-      width: 80px;
-      height: 80px;
-    }
-  }
+  background: url('https://images.pexels.com/photos/994473/pexels-photo-994473.jpeg?auto=compress&cs=tinysrgb&w=1920') no-repeat center center;
+  background-size: cover;
+  height: 500px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.category-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  width: 120px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.category-card img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.category-card span {
+  display: block;
+  margin-top: 5px;
+  font-size: 14px;
+  color: #333;
+}
+
+.category-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.category-card.active {
+  border-color: #007bff;
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+/* Styles for product cards and buttons */
+.product-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 400px; /* Ensure consistent height */
+  margin-bottom: 20px; /* Extra bottom margin to prevent overlap */
+}
+
+.card-body {
+  flex-grow: 1;
+}
+
+.card-footer {
+  padding: 10px 15px;
+}
+
+.custom-btn {
+  flex: 1;
+  margin: 0 5px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.custom-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.card-img-top {
+  transition: opacity 0.3s ease;
+}
+
+.card-img-top:hover {
+  opacity: 0.9;
+}
+
+/* Add to the end of Home.css */
+.product-link {
+  color: inherit; /* Prevent the default blue color for links */
+}
+
+.product-name {
+  color: #000 !important; /* Black color for product name */
+}
+
+.product-price {
+  color: #000 !important; /* Black color for product price */
+}

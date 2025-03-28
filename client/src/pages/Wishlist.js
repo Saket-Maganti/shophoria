@@ -2,125 +2,102 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function Wishlist() {
-  const { token } = useContext(AuthContext);
+  const { user, token, fetchWishlistCount } = useContext(AuthContext);
+  const [wishlistItems, setWishlistItems] = useState([]);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const [wishlist, setWishlist] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const fetchWishlist = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/wishlist`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setWishlist(response.data);
-    } catch (err) {
-      console.error('Error fetching wishlist:', err.response ? err.response.data : err.message);
-      setError('Failed to load wishlist. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       navigate('/login');
       return;
     }
     fetchWishlist();
-  }, [token, navigate]);
+  }, [user, navigate]);
 
-  const handleRemoveFromWishlist = async (productId) => {
+  const fetchWishlist = async () => {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/api/wishlist/${productId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      console.log('fetchWishlist - Fetching wishlist with token:', token);
+      const res = await axios.get(`${API_BASE_URL}/api/wishlist`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setWishlist(response.data);
-      alert('Product removed from wishlist!');
+      console.log('fetchWishlist - Wishlist fetched:', res.data);
+      setWishlistItems(res.data);
+      setError(null);
     } catch (err) {
-      console.error('Error removing from wishlist:', err.response ? err.response.data : err.message);
-      alert('Failed to remove product from wishlist. Please try again.');
+      const errorMsg = err.response?.data?.msg || err.response?.data?.error || 'Server error. Please try again.';
+      console.error('fetchWishlist - Error:', errorMsg);
+      setError(errorMsg);
+      setWishlistItems([]);
     }
   };
 
-  const handleClearWishlist = async () => {
-    if (!window.confirm('Are you sure you want to clear your wishlist?')) return;
-
+  const removeFromWishlist = async (productId) => {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/api/wishlist/clear`, {
-        headers: { Authorization: `Bearer ${token}` },
+      console.log('removeFromWishlist - Removing product:', productId);
+      await axios.delete(`${API_BASE_URL}/api/wishlist/${productId}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setWishlist(response.data);
-      alert('Wishlist cleared!');
+      alert('Removed from wishlist successfully!');
+      fetchWishlist();
+      fetchWishlistCount(token);
     } catch (err) {
-      console.error('Error clearing wishlist:', err.response ? err.response.data : err.message);
-      alert('Failed to clear wishlist. Please try again.');
+      const errorMsg = err.response?.data?.msg || err.response?.data?.error || 'Server error. Please try again.';
+      console.error('removeFromWishlist - Error:', errorMsg);
+      alert(`Failed to remove from wishlist: ${errorMsg}`);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container my-5">
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container my-5">
-      <h2>My Wishlist</h2>
-      {wishlist?.items?.length === 0 ? (
-        <p>Your wishlist is empty.</p>
+      <h2 className="text-center mb-4">Your Wishlist</h2>
+      {error && <div className="alert alert-danger">{error}</div>}
+      {wishlistItems.length === 0 ? (
+        <p className="text-center">Your wishlist is empty.</p>
       ) : (
-        <>
-          <button
-            className="btn btn-danger mb-3"
-            onClick={handleClearWishlist}
-            disabled={wishlist?.items?.length === 0}
-          >
-            Clear Wishlist
-          </button>
-          <div className="row">
-            {wishlist.items.map(item => (
-              <div key={item.productId._id} className="col-md-4 mb-4">
-                <div className="card h-100 shadow-sm">
-                  <img
-                    src={item.productId.images?.[0] || 'https://via.placeholder.com/150'}
-                    className="card-img-top"
-                    alt={item.productId.name}
-                  />
-                  <div className="card-body">
-                    <h5 className="card-title">{item.productId.name}</h5>
-                    <p className="card-text">{item.productId.description}</p>
-                    <p className="card-text text-primary">${item.productId.price.toFixed(2)}</p>
+        <div className="row">
+          {wishlistItems.map(item => (
+            <div key={item._id} className="col-md-4 mb-4">
+              <div className="card h-100 shadow-sm product-card">
+                <img
+                  src={item.product?.images && item.product.images.length > 0 ? item.product.images[0] : 'https://via.placeholder.com/150'}
+                  className="card-img-top"
+                  alt={item.product?.name || 'Product'}
+                  style={{ height: '200px', objectFit: 'cover' }}
+                  onError={(e) => (e.target.src = 'https://via.placeholder.com/150')}
+                />
+                <div className="card-body">
+                  <h5 className="card-title product-name">{item.product?.name || 'Product Not Found'}</h5>
+                  <p className="card-text text-muted">{item.product?.description || 'No description available'}</p>
+                  <p className="card-text fw-bold product-price">${item.product?.price?.toFixed(2) || 'N/A'}</p>
+                </div>
+                <div className="card-footer bg-transparent border-0">
+                  <div className="d-flex justify-content-between">
+                    {item.product ? (
+                      <Link to={`/product/${item.product._id}`} className="btn btn-primary btn-sm custom-btn">
+                        View Product
+                      </Link>
+                    ) : (
+                      <button className="btn btn-secondary btn-sm custom-btn" disabled>
+                        View Product
+                      </button>
+                    )}
                     <button
-                      className="btn btn-danger"
-                      onClick={() => handleRemoveFromWishlist(item.productId._id)}
+                      className="btn btn-danger btn-sm custom-btn"
+                      onClick={() => removeFromWishlist(item.product?._id)}
+                      disabled={!item.product}
                     >
                       Remove
                     </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -1,199 +1,128 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import './Cart.css';
 
 function Cart() {
+  const { user, token } = useContext(AuthContext);
   const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { token } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const fetchCart = useCallback(async () => {
-    if (!token) {
-      setError('Please log in to view your cart.');
-      setLoading(false);
+  useEffect(() => {
+    const fetchCart = async () => {
+      if (user && token) {
+        try {
+          const res = await axios.get(`${API_BASE_URL}/api/cart`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setCartItems(res.data);
+        } catch (err) {
+          console.error('Error fetching cart:', err);
+        }
+      } else {
+        const localCart = JSON.parse(localStorage.getItem('cart')) || [];
+        setCartItems(localCart);
+      }
+    };
+
+    fetchCart();
+  }, [user, token]);
+
+  const updateQuantity = async (item, newQuantity) => {
+    if (newQuantity < 1) {
+      removeItem(item);
       return;
     }
 
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/cart`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setCartItems(response.data.items || []);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching cart:', err.response?.data || err.message);
-      setError(err.response?.data?.msg || 'Failed to fetch cart. Please try again.');
-      setLoading(false);
-    }
-  }, [token]);
-
-  const updateQuantity = async (productId, quantity) => {
-    if (quantity < 1) return;
-    try {
-      await axios.put(
-        `${API_BASE_URL}/api/cart`,
-        { productId, quantity },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setCartItems(cartItems.map(item =>
-        item.productId._id === productId ? { ...item, quantity } : item
-      ));
-    } catch (err) {
-      console.error('Error updating quantity:', err.response?.data || err.message);
-      setError(err.response?.data?.msg || 'Failed to update quantity.');
+    if (user && token) {
+      try {
+        await axios.put(
+          `${API_BASE_URL}/api/cart/${item._id}`,
+          { quantity: newQuantity },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setCartItems(cartItems.map(i => (i._id === item._id ? { ...i, quantity: newQuantity } : i)));
+      } catch (err) {
+        console.error('Error updating quantity:', err);
+      }
+    } else {
+      let localCart = JSON.parse(localStorage.getItem('cart')) || [];
+      localCart = localCart.map(i => (i._id === item._id ? { ...i, quantity: newQuantity } : i));
+      localStorage.setItem('cart', JSON.stringify(localCart));
+      setCartItems(localCart);
     }
   };
 
-  const removeFromCart = async (productId) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/api/cart/${productId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setCartItems(cartItems.filter(item => item.productId._id !== productId));
-    } catch (err) {
-      console.error('Error removing item from cart:', err.response?.data || err.message);
-      setError(err.response?.data?.msg || 'Failed to remove item. Please try again.');
+  const removeItem = async (item) => {
+    if (user && token) {
+      try {
+        await axios.delete(`${API_BASE_URL}/api/cart/${item._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCartItems(cartItems.filter(i => i._id !== item._id));
+      } catch (err) {
+        console.error('Error removing item:', err);
+      }
+    } else {
+      let localCart = JSON.parse(localStorage.getItem('cart')) || [];
+      localCart = localCart.filter(i => i._id !== item._id);
+      localStorage.setItem('cart', JSON.stringify(localCart));
+      setCartItems(localCart);
     }
   };
-
-  const handleCheckout = async () => {
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/orders`,
-        { items: cartItems },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      await axios.delete(`${API_BASE_URL}/api/cart/clear`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setCartItems([]);
-      navigate(`/order/${response.data._id}`);
-    } catch (err) {
-      console.error('Error during checkout:', err.response?.data || err.message);
-      setError(err.response?.data?.msg || 'Failed to process checkout. Please try again.');
-    }
-  };
-
-  useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
-
-  useEffect(() => {
-    return () => setError('');
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="container my-5 text-center">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container my-5">
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (!cartItems || cartItems.length === 0) {
-    return (
-      <div className="container my-5">
-        <h2>Your Cart</h2>
-        <p>Your cart is empty.</p>
-      </div>
-    );
-  }
 
   const totalPrice = cartItems.reduce((total, item) => {
-    return total + (item.productId?.price || 0) * (item.quantity || 1);
+    const price = item.product ? item.product.price : item.price;
+    return total + price * item.quantity;
   }, 0);
 
   return (
-    <div className="cart-container">
-      <h2>Your Cart</h2>
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          {error}
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setError('')}
-            aria-label="Close"
-          ></button>
-        </div>
-      )}
-      <div className="row">
-        {cartItems.map(item => (
-          <div key={item._id} className="col-md-4 mb-4">
-            <div className="card h-100 shadow-sm cart-item">
-              <img
-                src={item.productId?.images?.[0] || 'https://placehold.it/150x150'}
-                className="card-img-top"
-                alt={item.productId?.name || 'Product'}
-              />
-              <div className="card-body">
-                <h5 className="card-title">{item.productId?.name || 'Unknown Product'}</h5>
-                <p className="card-text">
-                  Price: ${item.productId?.price ? item.productId.price.toFixed(2) : 'N/A'}
-                </p>
-                <p className="card-text">Quantity: {item.quantity}</p>
-                <div className="d-flex mb-2">
+    <div className="container my-5">
+      <h2 className="text-center mb-4">Your Cart</h2>
+      {cartItems.length === 0 ? (
+        <p className="text-center">Your cart is empty.</p>
+      ) : (
+        <div>
+          {cartItems.map(item => (
+            <div key={item._id} className="card mb-3">
+              <div className="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <h5>{item.product ? item.product.name : item.name}</h5>
+                  <p className="text-muted">
+                    ${item.product ? item.product.price : item.price} x {item.quantity}
+                  </p>
+                </div>
+                <div className="d-flex align-items-center">
                   <button
-                    className="btn btn-outline-secondary me-2"
-                    onClick={() => updateQuantity(item.productId._id, item.quantity - 1)}
+                    className="btn btn-outline-secondary btn-sm me-2"
+                    onClick={() => updateQuantity(item, item.quantity - 1)}
                   >
                     -
                   </button>
+                  <span>{item.quantity}</span>
                   <button
-                    className="btn btn-outline-secondary"
-                    onClick={() => updateQuantity(item.productId._id, item.quantity + 1)}
+                    className="btn btn-outline-secondary btn-sm ms-2 me-3"
+                    onClick={() => updateQuantity(item, item.quantity + 1)}
                   >
                     +
                   </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => removeItem(item)}
+                  >
+                    Remove
+                  </button>
                 </div>
-                <button
-                  className="btn btn-danger"
-                  onClick={() => removeFromCart(item.productId._id)}
-                >
-                  Remove from Cart
-                </button>
               </div>
             </div>
+          ))}
+          <div className="text-end mt-4">
+            <h4>Total: ${totalPrice.toFixed(2)}</h4>
+            <button className="btn btn-primary mt-2">Proceed to Checkout</button>
           </div>
-        ))}
-      </div>
-      <div className="cart-total">
-        <h4>Total: ${totalPrice.toFixed(2)}</h4>
-        <button className="btn btn-success checkout-btn" onClick={handleCheckout}>
-          Proceed to Checkout
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,40 @@
 import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode'; // ✅ FIXED IMPORT
 import { API_BASE_URL } from '../config';
 
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-  const [cart, setCart] = useState(null);
+  const [user, setUser] = useState(null);
+  const [cart, setCart] = useState([]);
   const [wishlist, setWishlist] = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token); // ✅ FIXED
+        setUser(decoded);
+      } catch (error) {
+        console.error('Invalid token:', error);
+        localStorage.removeItem('token');
+      }
+    }
+  }, []);
+
+  const login = (token) => {
+    localStorage.setItem('token', token);
+    const decoded = jwtDecode(token); // ✅ FIXED
+    setUser(decoded);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    setCart([]);
+    setWishlist([]);
+  };
 
   const refreshCart = async () => {
     const token = localStorage.getItem('token');
@@ -28,12 +56,8 @@ export const UserProvider = ({ children }) => {
     });
   };
 
-  useEffect(() => {
-    refreshCart();
-  }, []);
-
   return (
-    <UserContext.Provider value={{ cart, refreshCart, wishlist, addToWishlist }}>
+    <UserContext.Provider value={{ user, login, logout, cart, refreshCart, wishlist, addToWishlist }}>
       {children}
     </UserContext.Provider>
   );
